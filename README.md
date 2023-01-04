@@ -8,8 +8,10 @@
 ```
 git clone https://github.com/Izumiko/beihangLogin
 cd beihangLogin
-go build -o beihangLogin main.go
+go build -o beihangLogin -trimpath -ldflags "-s -w" main.go
 ```
+
+P.S. ldflags 中添加` -H windowsgui`可以隐藏Windows下的cmd窗口，但同时也会关闭命令行的输出。
 
 或访问[Github Actions](https://github.com/Izumiko/beihangLogin/actions/workflows/go.yml) 下载对应平台的预编译程序
 ## 用法

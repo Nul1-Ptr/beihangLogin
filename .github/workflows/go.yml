@@ -3,86 +3,90 @@ on: [ push ]
 jobs:
 
   build:
-    name: Build
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        goos: [windows, linux, darwin, freebsd]
+        goarch: [amd64, 386]
+        exclude:
+          # Exclude i386 on darwin.
+          - goarch: 386
+            goos: darwin
+        include:
+          # BEIGIN MacOS ARM64
+          - goos: darwin
+            goarch: arm64
+          # END MacOS ARM64
+          # BEGIN Linux ARM 7
+          - goos: linux
+            goarch: arm
+            goarm: 7
+          # END Linux ARM 7
+          # BEGIN Android ARM 8
+          - goos: android
+            goarch: arm64
+          # END Android ARM 8
+          # Windows ARM
+          - goos: windows
+            goarch: arm64
+          # BEGIN Other architectures
+          # BEGIN riscv64 & ARM64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: riscv64
+          # END riscv64 & ARM64
+          # BEGIN MIPS
+          - goos: linux
+            goarch: mips64
+          - goos: linux
+            goarch: mips64le
+          - goos: linux
+            goarch: mipsle
+          - goos: linux
+            goarch: mips
+          # END MIPS
+          # END Other architectures
+      fail-fast: false
     runs-on: ubuntu-latest
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      GOARM: ${{ matrix.goarm }}
+      CGO_ENABLED: 0
     steps:
-
-      - name: Set up Go 1.17
-        uses: actions/setup-go@v1
+      - name: Set up Go
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.17
-        id: go
+          go-version: 1.19
+          check-latest: true
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Get dependencies
         run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
+          go mod download
 
       - name: Build
         run: |
-          CGO_ENABLED=0 GOARCH=amd64 GOOS=darwin go build -ldflags "-s -w" -o beihangLogin.darwin.amd64 .
-          CGO_ENABLED=0 GOARCH=amd64 GOOS=freebsd go build -ldflags "-s -w" -o beihangLogin.freebsd.amd64 .
-          CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.amd64 .
-          CGO_ENABLED=0 GOARCH=arm GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.arm .
-          CGO_ENABLED=0 GOARCH=arm64 GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.arm64 .
-          CGO_ENABLED=0 GOARCH=mips GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.mips .
-          CGO_ENABLED=0 GOARCH=mips64 GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.mips64 .
-          CGO_ENABLED=0 GOARCH=mips64le GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.mips64le .
-          CGO_ENABLED=0 GOARCH=mipsle GOOS=linux go build -ldflags "-s -w" -o beihangLogin.linux.mipsle .
-          CGO_ENABLED=0 GOARCH=amd64 GOOS=windows go build -ldflags "-s -w" -o beihangLogin.windows.amd64.exe .
-      - name: beihangLogin.darwin.amd64
-        uses: actions/upload-artifact@v2
+          go build -ldflags "-s -w" -o beihangLogin .
+      - name: Build background beihangLogin on Windows
+        if: matrix.goos == 'windows'
+        run: |
+          go build -ldflags "-s -w -H windowsgui" -o beihangLogin.${{ env.GOARCH }}.nogui.exe .
+
+      - name: Rename Windows beihangLogin
+        if: matrix.goos == 'windows'
+        run: |
+          mv beihangLogin beihangLogin.exe
+      - name: Change the name
+        run: |
+          mv beihangLogin beihangLogin.${{ env.GOOS }}.${{ env.GOARCH }} || mv beihangLogin.exe beihangLogin.${{ env.GOOS }}.${{ env.GOARCH }}.exe
+      - name: Upload files to Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: beihangLogin.darwin.amd64
-          path: beihangLogin.darwin.amd64
-      - name: beihangLogin.freebsd.amd64
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.freebsd.amd64
-          path: beihangLogin.freebsd.amd64
-      - name: beihangLogin.linux.amd64
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.amd64
-          path: beihangLogin.linux.amd64
-      - name: beihangLogin.linux.arm
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.arm
-          path: beihangLogin.linux.arm
-      - name: beihangLogin.linux.arm64
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.arm64
-          path: beihangLogin.linux.arm64
-      - name: beihangLogin.linux.mips
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.mips
-          path: beihangLogin.linux.mips
-      - name: beihangLogin.linux.mips64
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.mips64
-          path: beihangLogin.linux.mips64
-      - name: beihangLogin.linux.mips64le
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.mips64le
-          path: beihangLogin.linux.mips64le
-      - name: beihangLogin.linux.mipsle
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.linux.mipsle
-          path: beihangLogin.linux.mipsle
-      - name: beihangLogin.windows.amd64
-        uses: actions/upload-artifact@v2
-        with:
-          name: beihangLogin.windows.amd64.exe
-          path: beihangLogin.windows.amd64.exe
+          name: beihangLogin.${{ env.GOOS }}.${{ env.GOARCH }}
+          path: |
+            ./beihangLogin.*
