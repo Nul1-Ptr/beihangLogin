@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package cmd
 import (
 	"beihangLogin/util"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -46,12 +47,17 @@ var detectCmd = &cobra.Command{
 			fmt.Println("User is online. Skip")
 		} else {
 			fmt.Println("User is not online. Try to login...")
-			err := util.Login(username, password)
-			if err != nil {
-				fmt.Println("Login failed:", err)
-				return
+			// try to log in for 4 times
+			for i := 0; i < 4; i++ {
+				err = util.Login(username, password)
+				if err != nil {
+					fmt.Println("Login failed:", err)
+					time.Sleep(2 * time.Second)
+				} else {
+					fmt.Println("Login success!")
+					break
+				}
 			}
-			fmt.Println("Login success.")
 		}
 	},
 }
